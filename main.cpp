@@ -5,6 +5,7 @@
 #include <string.h>
 #define NUMBER0     48
 #define NUMBER9     57
+#define BIG_SMALL_ALPHABET   32
 
 using namespace std;
 
@@ -17,16 +18,48 @@ typedef struct TFILENAME {
 queue<string> InputList;                                        //입력 String 을 ',' 기준으로 정렬
 queue<string> outputList;
 list<PFILENAME> CompareList;                                    //실제로 비교 할 LIST
+PFILENAME pFileData;
 
 int nInputCount = 0;
+int nFileCount = 0;
 
-void sort(list<PFILENAME> sortData)
+void sort(PFILENAME pData)
 {
-    list<PFILENAME>::iterator iter_1;
-    list<PFILENAME>::iterator iter_2;
-    for(iter_1 = sortData.begin(); iter_1 != sortData.end(); iter_1++){
+    for(int i = 0 ; i < nFileCount -1 ; i++){
+        for ( int j = 1; j < nFileCount - i ; j++){
+            int nHeaderCheck;
+            bool bNumberCheck = true;
+            sizeof(pData[i].header) > sizeof (pData[j].header) ? nHeaderCheck = sizeof(pData[i].header) : nHeaderCheck = sizeof(pData[j].header);
+            for( int k = 0; k < nHeaderCheck ; k++){                        // header 비교 정렬
+                if( (pData[j-1].header[k] == pData[j].header[k]) || ((pData[j-1].header[k] - pData[j].header[k]) == BIG_SMALL_ALPHABET) ||((pData[j].header[k] - pData[j-1].header[k]) == BIG_SMALL_ALPHABET) ){
+                    continue;                                               // k 값 skip
+                } else if ( (pData[j-1].header[k] > pData[j].header[k]) &&((pData[j].header[k] -pData[j-1].header[k]) < 32) ){    // 이전 데이터가 다음데이터보다 클때, 대소문자 구분없음
+                    PFILENAME pBuffer = new FILENAME;
+                    *pBuffer = pData[j-1];                        // 버퍼를 생성해 주소 복사
+                    pData[j-1] = pData[j];                                  // 이전 데이터에 다음 데이터 주소값 복사
+                    pData[j] = *pBuffer;                                    // 다음 데이터에 버퍼에 저장되어있는 데이터 복사
+                    bNumberCheck = false;
+                    cout<<"Change Data"<<endl;
+                    delete pBuffer;
+                    break;                                                  // header 에서 순서 찾음  --> break 끝 , number 비교 x
+                }
+            }
+            if( bNumberCheck == true ){
+                if( pData[j-1].number > pData[j].number){
+                    PFILENAME pBuffer = new FILENAME;                       // 버퍼를 생성해 주소 복사
+                    *pBuffer = pData[j-1];
+                    pData[j-1] = pData[j];                                  // 이전 데이터에 다음 데이터 주소값 복사
+                    pData[j] = *pBuffer;                                    // 다음 데이터에 버퍼에 저장되어있는 데이터 복사
+                    cout<<"Change Number"<<endl;
+                    delete pBuffer;
+                } else{
+                    cout<<"NoChange"<<endl;
+                }
+            }
 
+        }
     }
+
 }
 
 void split(string data)
@@ -46,6 +79,8 @@ void split(string data)
         SplitPoint = strtok(nullptr,",");
         nInputCount++;
     }
+    pFileData = new FILENAME[InputList.size()];
+    cout<<"InputSize: "<<InputList.size()<<endl;
     return;
 }
 
@@ -79,11 +114,13 @@ void makeCompareList(string data)
                 }
                 pfileName->tail[i] = buffer[NumberFinishCount + 1 + i];
             }
-            CompareList.push_back(pfileName);
+//            CompareList.push_back(pfileName);
+            pFileData[nFileCount] = *pfileName;
+            nFileCount++;
             return;
         }
         if((NUMBER0 <= buffer[i] && buffer[i] <= NUMBER9) && !(NUMBER0 <= buffer[i-1] && buffer[i-1] <= NUMBER9)){      //header
-            unsigned long long nHeaderSize = i-1;
+            unsigned long long nHeaderSize = i;
             pfileName->header = new char[nHeaderSize];
             for( unsigned long long j = 0; j < i ; j++){
                 pfileName->header[j] = buffer[j];
@@ -114,12 +151,19 @@ int main()
         makeCompareList(InputList.front());
         InputList.pop();
     }
-    list<PFILENAME>::iterator iter;
-    for(iter = CompareList.begin(); iter != CompareList.end() ; iter++){
-        PFILENAME A = *iter;
-        cout<<"header : " <<A->header<<endl;
-        cout<<"number : " <<A->number<<endl;
-        cout<<"tail : " << A->tail<<endl;
+
+    sort(pFileData);
+
+
+    cout<<"[";
+    for(int i = 0; i <nFileCount ; i++){
+        cout<<pFileData[i].header;
+        cout<<pFileData[i].number;
+        cout<<pFileData[i].tail;
+        if( i != nFileCount-1){
+            cout<<",";
+        }
     }
+    cout<<"]";
     return 0;
 }
